@@ -1,0 +1,22 @@
+# Ignorar carpetas de build
+target/
+build/
+out/
+
+# Configuración local
+.idea/
+.vscode/
+*.iml
+
+# Archivos temporales
+*.log
+*.tmp
+*.bak
+
+# Git y CI
+.git/
+.gitignore
+.DS_Store
+
+# Archivos del sistema
+Thumbs.db

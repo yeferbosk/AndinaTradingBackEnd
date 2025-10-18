@@ -1,0 +1,90 @@
+version: '3.9'
+
+services:
+  # ===========================================
+  # MYSQL DATABASE
+  # ===========================================
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql123
+      MYSQL_DATABASE: default_db # se crea una base temporal mínima (requerido por MySQL init)
+    ports:
+      - "3306:3306"
+    volumes:
+      # Volumen para persistir los datos de MySQL
+      - mysql_data:/var/lib/mysql
+
+      # Montamos tus scripts de inicialización
+      # ⚠️ IMPORTANTE: NO dejar espacio entre "./" y ".Scripts"
+      - ./.Scripts:/docker-entrypoint-initdb.d
+    networks:
+      - andina-net
+
+  # ===========================================
+  # EUREKA SERVICE
+  # ===========================================
+  eureka-service:
+    build: ./eureka-service
+    container_name: eureka-service
+    ports:
+      - "8761:8761"
+    networks:
+      - andina-net
+    depends_on:
+      - mysql
+
+  # ===========================================
+  # GESTION SERVICE
+  # ===========================================
+  gestion-service:
+    build: ./gestion-service
+    container_name: gestion-service
+    ports:
+      - "8081:8081"
+    networks:
+      - andina-net
+    depends_on:
+      - eureka-service
+      - mysql
+
+  # ===========================================
+  # BOLSA SERVICE
+  # ===========================================
+  bolsa-service:
+    build: ./bolsa-service
+    container_name: bolsa-service
+    ports:
+      - "8082:8082"
+    networks:
+      - andina-net
+    depends_on:
+      - eureka-service
+      - mysql
+
+  # ===========================================
+  # API GATEWAY SERVICE
+  # ===========================================
+  api-gateway-service:
+    build: ./api-gateway-service
+    container_name: api-gateway-service
+    ports:
+      - "8080:8080"
+    networks:
+      - andina-net
+    depends_on:
+      - eureka-service
+      - gestion-service
+      - bolsa-service
+
+# ===========================================
+# VOLUMES & NETWORK CONFIG
+# ===========================================
+volumes:
+  mysql_data:
+
+networks:
+  andina-net:
+    driver: bridge

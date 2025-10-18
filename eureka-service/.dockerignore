@@ -1,0 +1,13 @@
+target/
+build/
+out/
+.idea/
+.vscode/
+*.iml
+*.log
+*.tmp
+*.bak
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
