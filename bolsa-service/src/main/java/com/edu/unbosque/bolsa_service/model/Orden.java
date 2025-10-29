@@ -29,10 +29,29 @@ public class Orden {
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion;
 
-    @Column(name = "empresa_id", nullable = false)
-    private Long empresaId;
+    @Column(name = "empresa_id")
+    private Long empresaId;  // Opcional para el nuevo sistema
 
-    @Column(name = "usuario_id", nullable = false)
-    private Long usuarioId;
+    @Column(name = "usuario_id")
+    private Integer usuarioId;
+    
+    // Campos para integración con Interactive Brokers
+    @Column(name = "cuenta_id")
+    private Long cuentaId; // ID de la cuenta de paper trading del usuario
+    
+    @Column(name = "simbolo")
+    private String simbolo; // Símbolo del instrumento (ej: AAPL, MSFT)
+    
+    @Column(name = "accion")
+    private String accion; // COMPRA o VENTA
+    
+    @Column(name = "estado")
+    private String estado = "PENDIENTE"; // PENDIENTE, ENVIADA_IB, EJECUTADA, CANCELADA, ERROR_IB
+    
+    @Column(name = "ib_order_id")
+    private Integer ibOrderId; // ID de la orden en Interactive Brokers
+    
+    @Column(name = "fecha_actualizacion")
+    private LocalDateTime fechaActualizacion;
 
 }

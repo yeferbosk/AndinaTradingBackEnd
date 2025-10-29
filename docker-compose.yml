@@ -63,6 +63,14 @@ services:
     depends_on:
       - eureka-service
       - mysql
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - IB_HOST=host.docker.internal
+      - IB_PORT=7497
+    # Para desarrollo local con IB Gateway
+    volumes:
+      - ./bolsa-service/logs:/app/logs
 
   # ===========================================
   # API GATEWAY SERVICE
