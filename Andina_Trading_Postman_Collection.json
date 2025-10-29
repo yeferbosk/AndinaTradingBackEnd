@@ -1,0 +1,294 @@
+{
+  "info": {
+    "name": "Andina Trading - Paper Trading API",
+    "description": "Colección de endpoints para el sistema de trading con Interactive Brokers",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Paper Trading",
+      "item": [
+        {
+          "name": "1. Comprar Acciones",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/paper/comprar?usuarioId=1&simbolo=AAPL&nombreEmpresa=Apple Inc.&cantidad=5",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "paper", "comprar"],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "1",
+                  "description": "ID del usuario que compra"
+                },
+                {
+                  "key": "simbolo",
+                  "value": "AAPL",
+                  "description": "Símbolo de la acción (AAPL, MSFT, TSLA, etc)"
+                },
+                {
+                  "key": "nombreEmpresa",
+                  "value": "Apple Inc.",
+                  "description": "Nombre de la empresa"
+                },
+                {
+                  "key": "cantidad",
+                  "value": "5",
+                  "description": "Cantidad de acciones a comprar"
+                }
+              ]
+            },
+            "description": "Compra acciones enviando la orden real a TWS. Obtiene el precio real del mercado o usa precio de referencia si no hay suscripción."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Vender Acciones",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/paper/vender?usuarioId=1&simbolo=AAPL&cantidad=3&precio=240.50",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "paper", "vender"],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "1",
+                  "description": "ID del usuario que vende"
+                },
+                {
+                  "key": "simbolo",
+                  "value": "AAPL",
+                  "description": "Símbolo de la acción a vender"
+                },
+                {
+                  "key": "cantidad",
+                  "value": "3",
+                  "description": "Cantidad de acciones a vender"
+                },
+                {
+                  "key": "precio",
+                  "value": "240.50",
+                  "description": "Precio de venta"
+                }
+              ]
+            },
+            "description": "Vende acciones que el usuario posee en su portafolio."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Ver Cuenta del Usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/paper/cuenta?usuarioId=1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "paper", "cuenta"],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "1",
+                  "description": "ID del usuario"
+                }
+              ]
+            },
+            "description": "Obtiene el resumen completo de la cuenta: balance, posiciones y transacciones."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Ver Posiciones del Usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/paper/posiciones?usuarioId=1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "paper", "posiciones"],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "1",
+                  "description": "ID del usuario"
+                }
+              ]
+            },
+            "description": "Lista todas las posiciones de acciones del usuario."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Ver Historial de Transacciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/paper/historial?usuarioId=1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "paper", "historial"],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "1",
+                  "description": "ID del usuario"
+                }
+              ]
+            },
+            "description": "Obtiene el historial de transacciones del usuario."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Datos de Mercado",
+      "item": [
+        {
+          "name": "Ecopetrol (EC)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/ecopetrol",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "ecopetrol"]
+            },
+            "description": "Obtiene datos en tiempo real de Ecopetrol."
+          },
+          "response": []
+        },
+        {
+          "name": "Bancolombia (CIB)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/bancolombia",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "bancolombia"]
+            },
+            "description": "Obtiene datos en tiempo real de Bancolombia."
+          },
+          "response": []
+        },
+        {
+          "name": "Avianca (AVH)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/avianca",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "avianca"]
+            },
+            "description": "Obtiene datos en tiempo real de Avianca."
+          },
+          "response": []
+        },
+        {
+          "name": "Cualquier Acción",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/accion/AAPL?exchange=SMART&currency=USD",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "accion", "AAPL"],
+              "query": [
+                {
+                  "key": "exchange",
+                  "value": "SMART",
+                  "description": "Exchange (SMART, NYSE, NASDAQ)"
+                },
+                {
+                  "key": "currency",
+                  "value": "USD",
+                  "description": "Moneda"
+                }
+              ]
+            },
+            "description": "Obtiene datos de cualquier acción por símbolo."
+          },
+          "response": []
+        },
+        {
+          "name": "Listado Acciones Colombianas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/api/mercado-colombia/listado",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "mercado-colombia", "listado"]
+            },
+            "description": "Lista todas las acciones colombianas disponibles."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sistema",
+      "item": [
+        {
+          "name": "Health Check - Bolsa Service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8082/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["actuator", "health"]
+            },
+            "description": "Verifica el estado del servicio bolsa-service."
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check - API Gateway",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["actuator", "health"]
+            },
+            "description": "Verifica el estado del API Gateway."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+
