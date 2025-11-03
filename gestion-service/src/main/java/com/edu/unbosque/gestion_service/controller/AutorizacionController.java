@@ -9,10 +9,13 @@ import org.springframework.web.bind.annotation.*;
 import com.edu.unbosque.gestion_service.service.UsuarioService;
 import com.edu.unbosque.gestion_service.service.OtpStorageService;
 import com.edu.unbosque.gestion_service.service.CorreosService;
+import com.edu.unbosque.gestion_service.service.ComisionistaService;
 import com.edu.unbosque.gestion_service.config.TokenAdmin;
 import com.edu.unbosque.gestion_service.model.Usuario;
+import com.edu.unbosque.gestion_service.model.Comisionista;
 
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
@@ -32,6 +35,72 @@ public class AutorizacionController {
 
     @Autowired
     private TokenAdmin tokenAdmin;
+
+    @Autowired
+    private ComisionistaService comisionistaService;
+
+    /**
+     * Login unificado que detecta automáticamente si es Trader o Comisionista
+     * Intenta primero como Usuario (Trader), si no encuentra, busca en Comisionista
+     * Retorna información para redirigir al panel correspondiente
+     */
+    @PostMapping("/login-unificado")
+    public ResponseEntity<?> loginUnificado(@RequestBody Map<String, String> jsonParametros) {
+        String email = jsonParametros.get("email");
+        String password = jsonParametros.get("password") != null ? jsonParametros.get("password") : jsonParametros.get("contrasena");
+        
+        if (email == null || password == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Email y contraseña son requeridos");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
+        Map<String, Object> respuesta = new HashMap<>();
+
+        // 1. Intentar como Usuario (Trader) primero
+        if (usuarioService.validarCredenciales(email, password)) {
+            Optional<Usuario> usuarioOpt = usuarioService.encontrarUsuarioCorreo(email);
+            if (usuarioOpt.isPresent()) {
+                Usuario usuario = usuarioOpt.get();
+                respuesta.put("success", true);
+                respuesta.put("message", "Login exitoso");
+                respuesta.put("tipoUsuario", "TRADER");
+                respuesta.put("id", usuario.getIdUsuario());
+                respuesta.put("nombre", usuario.getNombre() != null ? usuario.getNombre() : "");
+                respuesta.put("apellido", usuario.getApellido() != null ? usuario.getApellido() : "");
+                respuesta.put("email", usuario.getEmail());
+                respuesta.put("rol", usuario.getRol() != null ? usuario.getRol() : "");
+                respuesta.put("estado", usuario.isEstado());
+                respuesta.put("redirigirA", "panel-trader"); // Indicador para el frontend
+                return ResponseEntity.ok(respuesta);
+            }
+        }
+
+        // 2. Si no es Usuario, intentar como Comisionista
+        if (comisionistaService.validarCredenciales(email, password)) {
+            Optional<Comisionista> comisionistaOpt = comisionistaService.encontrarComisionistaPorEmail(email);
+            if (comisionistaOpt.isPresent()) {
+                Comisionista comisionista = comisionistaOpt.get();
+                respuesta.put("success", true);
+                respuesta.put("message", "Login exitoso");
+                respuesta.put("tipoUsuario", "COMISIONISTA");
+                respuesta.put("id", comisionista.getIdComisionista());
+                respuesta.put("nombre", comisionista.getNombre() != null ? comisionista.getNombre() : "");
+                respuesta.put("apellido", comisionista.getApellido() != null ? comisionista.getApellido() : "");
+                respuesta.put("email", comisionista.getEmail());
+                respuesta.put("estado", comisionista.isEstado());
+                respuesta.put("redirigirA", "panel-comisionista"); // Indicador para el frontend
+                return ResponseEntity.ok(respuesta);
+            }
+        }
+
+        // 3. Si no encontró en ninguno
+        Map<String, Object> error = new HashMap<>();
+        error.put("success", false);
+        error.put("message", "Credenciales inválidas");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
 
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody Map<String, String> jsonParametros) {
