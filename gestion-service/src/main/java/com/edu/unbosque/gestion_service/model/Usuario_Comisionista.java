@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "Usuario_Comisionista")
+@Table(name = "usuario_comisionista")
 @IdClass(UsuarioComisionistaId.class)
 @Data
 @NoArgsConstructor
@@ -15,12 +15,13 @@ public class Usuario_Comisionista {
 
     @Id
     @ManyToOne
-    @JoinColumn(name = "id_usuario")
+    @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario")
     private Usuario usuario;
 
     @Id
     @ManyToOne
-    @JoinColumn(name = "id_comisionista")
+    @JoinColumn(name = "id_comisionista", referencedColumnName = "id_comisionista", 
+                foreignKey = @ForeignKey(name = "FK_usuario_comisionista_comisionista"))
     private Comisionista comisionista;
 
 

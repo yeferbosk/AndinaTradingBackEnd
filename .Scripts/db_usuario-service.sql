@@ -72,6 +72,7 @@ INSERT INTO Comisionista (nombre, apellido, telefono, email, password, estado) V
 ('Camila', 'López', '+57 303 456 7890', 'camila@unbosque.edu.co', 'c101', TRUE),
 ('Andrés', 'García', '+57 304 567 8901', 'andres@unbosque.edu.co', 'a202', TRUE);
 
+
 -- ===========================================
 --  DATOS INICIALES: Usuario_Comisionista
 -- ===========================================

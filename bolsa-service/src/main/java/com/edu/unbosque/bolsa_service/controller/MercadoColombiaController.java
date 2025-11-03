@@ -6,6 +6,9 @@ import com.edu.unbosque.bolsa_service.model.Transaccion;
 import com.edu.unbosque.bolsa_service.Repository.OrdenRepository;
 import com.edu.unbosque.bolsa_service.service.IBService;
 import com.edu.unbosque.bolsa_service.service.PaperTradingService;
+import com.edu.unbosque.bolsa_service.service.IBTwsService;
+import com.edu.unbosque.bolsa_service.service.OrdenComisionistaService;
+import com.ib.client.Bar;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +32,12 @@ public class MercadoColombiaController {
     
     @Autowired
     private PaperTradingService paperTradingService;
+    
+    @Autowired
+    private IBTwsService ibTwsService;
+    
+    @Autowired
+    private OrdenComisionistaService ordenComisionistaService;
     
     /**
      * Obtiene datos de mercado para Ecopetrol (EC)
@@ -213,19 +222,18 @@ public class MercadoColombiaController {
     
     /**
      * Vender acciones con paper trading
+     * Obtiene el precio REAL del mercado desde TWS automáticamente
      */
     @PostMapping("/paper/vender")
-    public ResponseEntity<Map<String, Object>> venderPaper(
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> venderPaper(
             @RequestParam Integer usuarioId,
             @RequestParam String simbolo,
-            @RequestParam Integer cantidad,
-            @RequestParam Double precio) {
+            @RequestParam Integer cantidad) {
         
-        BigDecimal precioBD = BigDecimal.valueOf(precio);
-        Map<String, Object> resultado = paperTradingService.venderAcciones(
-            usuarioId, simbolo, cantidad, precioBD);
-        
-        return ResponseEntity.ok(resultado);
+        // Usar el método que obtiene el precio real desde TWS
+        return paperTradingService.venderAccionesConPrecioReal(
+            usuarioId, simbolo, cantidad)
+            .thenApply(ResponseEntity::ok);
     }
     
     /**
@@ -253,6 +261,142 @@ public class MercadoColombiaController {
     public ResponseEntity<List<Posicion>> obtenerPosiciones(@RequestParam Integer usuarioId) {
         List<Posicion> posiciones = paperTradingService.obtenerPosiciones(usuarioId);
         return ResponseEntity.ok(posiciones);
+    }
+    
+    /**
+     * Obtener portafolio completo del usuario con valor total
+     * Incluye: balance disponible, valor de posiciones, valor total del portafolio, ganancia/pérdida
+     */
+    @GetMapping("/paper/portafolio")
+    public ResponseEntity<Map<String, Object>> obtenerPortafolio(@RequestParam Integer usuarioId) {
+        Map<String, Object> portafolio = paperTradingService.obtenerPortafolio(usuarioId);
+        return ResponseEntity.ok(portafolio);
+    }
+    
+    /**
+     * Obtener resumen financiero claro: ganancias/pérdidas, balance total, estado
+     * Muestra si está ganando o perdiendo y cuánto
+     */
+    @GetMapping("/paper/resumen")
+    public ResponseEntity<Map<String, Object>> obtenerResumenFinanciero(@RequestParam Integer usuarioId) {
+        Map<String, Object> resumen = paperTradingService.obtenerResumenFinanciero(usuarioId);
+        return ResponseEntity.ok(resumen);
+    }
+    
+    /**
+     * Obtener evolución del valor de una acción durante los últimos 5 días hábiles
+     * Retorna datos históricos en formato JSON para visualización en gráfico
+     */
+    @GetMapping("/paper/historial-precios/{simbolo}")
+    public CompletableFuture<ResponseEntity<Map<String, Object>>> obtenerHistorialPrecios(
+            @PathVariable String simbolo) {
+        
+        return ibTwsService.getHistoricalData(simbolo).thenApply(bars -> {
+            Map<String, Object> response = new HashMap<>();
+            
+            if (bars == null || bars.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No se pudieron obtener datos históricos para " + simbolo);
+                response.put("simbolo", simbolo);
+                response.put("datos", new java.util.ArrayList<>());
+                return ResponseEntity.status(404).body(response);
+            }
+            
+            // Formatear datos para gráfico
+            List<Map<String, Object>> datosGrafico = new java.util.ArrayList<>();
+            for (Bar bar : bars) {
+                Map<String, Object> punto = new HashMap<>();
+                punto.put("fecha", bar.time()); // Fecha en formato de IB
+                punto.put("precioCierre", bar.close());
+                punto.put("precioApertura", bar.open());
+                punto.put("precioMaximo", bar.high());
+                punto.put("precioMinimo", bar.low());
+                // Convertir Decimal a double de forma segura
+                if (bar.volume() != null) {
+                    try {
+                        punto.put("volumen", Double.parseDouble(bar.volume().toString()));
+                    } catch (Exception e) {
+                        punto.put("volumen", 0.0);
+                    }
+                } else {
+                    punto.put("volumen", 0.0);
+                }
+                datosGrafico.add(punto);
+            }
+            
+            response.put("success", true);
+            response.put("simbolo", simbolo);
+            response.put("periodo", "Últimos 5 días hábiles");
+            response.put("totalPuntos", datosGrafico.size());
+            response.put("datos", datosGrafico);
+            response.put("message", "Datos históricos obtenidos exitosamente");
+            
+            return ResponseEntity.ok(response);
+        });
+    }
+    
+    // ===============================================
+    // ENDPOINTS PARA GESTIONAR ORDENES DE COMISIONISTA
+    // ===============================================
+    
+    /**
+     * Obtener órdenes pendientes del trader (del comisionista)
+     * GET /api/mercado-colombia/paper/ordenes-comisionista/pendientes?usuarioId={id}
+     */
+    @GetMapping("/paper/ordenes-comisionista/pendientes")
+    public ResponseEntity<List<Map<String, Object>>> obtenerOrdenesPendientes(
+            @RequestParam Integer usuarioId) {
+        
+        List<com.edu.unbosque.bolsa_service.model.OrdenComisionista> ordenes = 
+            ordenComisionistaService.obtenerOrdenesPendientesDelTrader(usuarioId);
+        
+        List<Map<String, Object>> ordenesResponse = ordenes.stream()
+            .map(orden -> {
+                Map<String, Object> mapa = new HashMap<>();
+                mapa.put("id", orden.getId());
+                mapa.put("idComisionista", orden.getIdComisionista());
+                mapa.put("simbolo", orden.getSimbolo());
+                mapa.put("nombreEmpresa", orden.getNombreEmpresa());
+                mapa.put("cantidad", orden.getCantidad());
+                mapa.put("precioLimite", orden.getPrecioLimite());
+                mapa.put("mensaje", orden.getMensaje());
+                mapa.put("fechaCreacion", orden.getFechaCreacion());
+                mapa.put("estado", orden.getEstado());
+                return mapa;
+            })
+            .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(ordenesResponse);
+    }
+    
+    /**
+     * Aceptar una orden del comisionista (ejecuta la compra)
+     * POST /api/mercado-colombia/paper/ordenes-comisionista/{ordenId}/aceptar
+     */
+    @PostMapping("/paper/ordenes-comisionista/{ordenId}/aceptar")
+    public ResponseEntity<Map<String, Object>> aceptarOrdenComisionista(@PathVariable Long ordenId) {
+        Map<String, Object> resultado = ordenComisionistaService.aceptarOrden(ordenId);
+
+        if ((Boolean) resultado.getOrDefault("success", false)) {
+            return ResponseEntity.ok(resultado);
+        } else {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(resultado);
+        }
+    }
+    
+    /**
+     * Rechazar una orden del comisionista
+     * POST /api/mercado-colombia/paper/ordenes-comisionista/{ordenId}/rechazar
+     */
+    @PostMapping("/paper/ordenes-comisionista/{ordenId}/rechazar")
+    public ResponseEntity<Map<String, Object>> rechazarOrdenComisionista(@PathVariable Long ordenId) {
+        Map<String, Object> resultado = ordenComisionistaService.rechazarOrden(ordenId);
+
+        if ((Boolean) resultado.getOrDefault("success", false)) {
+            return ResponseEntity.ok(resultado);
+        } else {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST).body(resultado);
+        }
     }
     
     /**

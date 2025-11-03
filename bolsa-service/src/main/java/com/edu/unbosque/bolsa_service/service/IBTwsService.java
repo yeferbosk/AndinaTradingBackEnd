@@ -37,6 +37,10 @@ public class IBTwsService implements EWrapper {
     private final Map<Integer, CompletableFuture<Double>> priceRequests = new ConcurrentHashMap<>();
     private final Map<Integer, String> orderStatuses = new ConcurrentHashMap<>();
     
+    // Para datos históricos
+    private final Map<Integer, CompletableFuture<List<Bar>>> historicalDataRequests = new ConcurrentHashMap<>();
+    private final Map<Integer, List<Bar>> historicalDataCache = new ConcurrentHashMap<>();
+    
     @PostConstruct
     public void initialize() {
         readerSignal = new EJavaSignal();
@@ -210,6 +214,64 @@ public class IBTwsService implements EWrapper {
         });
     }
     
+    /**
+     * Obtiene datos históricos de precios para los últimos 5 días hábiles
+     * @param symbol Símbolo de la acción
+     * @return CompletableFuture con lista de barras (Bar) con datos históricos
+     */
+    public CompletableFuture<List<Bar>> getHistoricalData(String symbol) {
+        CompletableFuture<List<Bar>> future = new CompletableFuture<>();
+        
+        CompletableFuture.runAsync(() -> {
+            try {
+                if (!isConnected()) {
+                    connect().join();
+                }
+                
+                int reqId = nextRequestId++;
+                historicalDataRequests.put(reqId, future);
+                historicalDataCache.put(reqId, new java.util.ArrayList<>());
+                
+                // Crear contrato
+                Contract contract = new Contract();
+                contract.symbol(symbol);
+                contract.secType("STK");
+                contract.currency("USD");
+                contract.exchange("SMART");
+                
+                // Solicitar datos históricos: 5 días hábiles, barras diarias
+                // Formato: "5 D" = 5 días, "1 day" = barras diarias
+                String duration = "5 D";
+                String barSize = "1 day";
+                String whatToShow = "TRADES"; // Precio de cierre
+                int useRTH = 1; // Regular Trading Hours
+                
+                clientSocket.reqHistoricalData(reqId, contract, "", duration, barSize, 
+                                                whatToShow, useRTH, 1, false, null);
+                
+                logger.info("📊 Solicitando datos históricos de {} con reqId: {} | Duración: {} | Bar size: {}", 
+                           symbol, reqId, duration, barSize);
+                
+                // Timeout de 30 segundos
+                CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS).execute(() -> {
+                    if (!future.isDone()) {
+                        logger.warn("⏱️ Timeout al obtener datos históricos de {}", symbol);
+                        clientSocket.cancelHistoricalData(reqId);
+                        historicalDataRequests.remove(reqId);
+                        historicalDataCache.remove(reqId);
+                        future.complete(new java.util.ArrayList<>());
+                    }
+                });
+                
+            } catch (Exception e) {
+                logger.error("Error al solicitar datos históricos: {}", e.getMessage(), e);
+                future.complete(new java.util.ArrayList<>());
+            }
+        });
+        
+        return future;
+    }
+    
     public boolean isConnected() {
         return connected && clientSocket != null && clientSocket.isConnected();
     }
@@ -335,9 +397,40 @@ public class IBTwsService implements EWrapper {
     @Override public void updateNewsBulletin(int msgId, int msgType, String message, String origExchange) {}
     @Override public void managedAccounts(String accountsList) { logger.info("📊 Cuentas disponibles: {}", accountsList); }
     @Override public void receiveFA(int faDataType, String xml) {}
-    @Override public void historicalData(int reqId, Bar bar) {}
-    @Override public void historicalDataUpdate(int reqId, Bar bar) {}
-    @Override public void historicalDataEnd(int reqId, String startDate, String endDate) {}
+    @Override 
+    public void historicalData(int reqId, Bar bar) {
+        // Capturar cada barra de datos históricos
+        List<Bar> bars = historicalDataCache.get(reqId);
+        if (bars != null && bar != null) {
+            bars.add(bar);
+            logger.debug("📊 Barra histórica recibida - ReqID: {} | Fecha: {} | Close: ${}", 
+                        reqId, bar.time(), bar.close());
+        }
+    }
+    
+    @Override 
+    public void historicalDataUpdate(int reqId, Bar bar) {
+        // Actualizaciones en tiempo real de datos históricos (no usado para datos pasados)
+        logger.debug("📊 Actualización histórica - ReqID: {}", reqId);
+    }
+    
+    @Override 
+    public void historicalDataEnd(int reqId, String startDate, String endDate) {
+        // Cuando termina la solicitud de datos históricos, completar el futuro
+        CompletableFuture<List<Bar>> future = historicalDataRequests.remove(reqId);
+        List<Bar> bars = historicalDataCache.remove(reqId);
+        
+        if (future != null && !future.isDone()) {
+            if (bars != null && !bars.isEmpty()) {
+                logger.info("✅ Datos históricos completados - ReqID: {} | Barras: {} | Periodo: {} a {}", 
+                           reqId, bars.size(), startDate, endDate);
+                future.complete(bars);
+            } else {
+                logger.warn("⚠️ No se recibieron datos históricos para ReqID: {}", reqId);
+                future.complete(new java.util.ArrayList<>());
+            }
+        }
+    }
     @Override public void scannerParameters(String xml) {}
     @Override public void scannerData(int reqId, int rank, ContractDetails contractDetails, String distance, String benchmark, String projection, String legsStr) {}
     @Override public void scannerDataEnd(int reqId) {}

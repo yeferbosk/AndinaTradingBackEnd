@@ -17,6 +17,7 @@ import com.edu.unbosque.gestion_service.repository.UsuarioRepository;
 import com.edu.unbosque.gestion_service.service.CorreosService;
 import com.edu.unbosque.gestion_service.model.Usuario;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -114,6 +115,85 @@ public class UsuarioController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Obtener perfil completo del usuario
+     * Devuelve toda la información del perfil (sin contraseña)
+     */
+    @GetMapping("/perfil/{idUsuario}")
+    public ResponseEntity<?> obtenerPerfil(@PathVariable Integer idUsuario) {
+        Optional<Usuario> usuarioOpt = usuarioService.obtenerUsuarioPorId(idUsuario);
+        
+        if (usuarioOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Usuario no encontrado"));
+        }
+
+        Usuario usuario = usuarioOpt.get();
+        Map<String, Object> perfil = new HashMap<>();
+        perfil.put("idUsuario", usuario.getIdUsuario());
+        perfil.put("nombre", usuario.getNombre() != null ? usuario.getNombre() : "");
+        perfil.put("apellido", usuario.getApellido() != null ? usuario.getApellido() : "");
+        perfil.put("email", usuario.getEmail());
+        perfil.put("telefono", usuario.getTelefono() != null ? usuario.getTelefono() : "");
+        perfil.put("rol", usuario.getRol() != null ? usuario.getRol() : "");
+        perfil.put("estado", usuario.isEstado());
+
+        return ResponseEntity.ok(perfil);
+    }
+
+    /**
+     * Actualizar perfil del usuario
+     * Permite actualizar: nombre, apellido, email, telefono
+     */
+    @PutMapping("/perfil/{idUsuario}")
+    public ResponseEntity<?> actualizarPerfil(
+            @PathVariable Integer idUsuario,
+            @RequestBody Map<String, String> datosPerfil) {
+        
+        Optional<Usuario> usuarioOpt = usuarioService.obtenerUsuarioPorId(idUsuario);
+        
+        if (usuarioOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Usuario no encontrado"));
+        }
+
+        Usuario usuario = usuarioOpt.get();
+        
+        // Actualizar campos permitidos
+        if (datosPerfil.containsKey("nombre")) {
+            usuario.setNombre(datosPerfil.get("nombre"));
+        }
+        if (datosPerfil.containsKey("apellido")) {
+            usuario.setApellido(datosPerfil.get("apellido"));
+        }
+        if (datosPerfil.containsKey("email")) {
+            // Validar que el email no esté en uso por otro usuario
+            Optional<Usuario> usuarioConEmail = usuarioService.encontrarUsuarioCorreo(datosPerfil.get("email"));
+            if (usuarioConEmail.isPresent() && !usuarioConEmail.get().getIdUsuario().equals(idUsuario)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "El email ya está en uso por otro usuario"));
+            }
+            usuario.setEmail(datosPerfil.get("email"));
+        }
+        if (datosPerfil.containsKey("telefono")) {
+            usuario.setTelefono(datosPerfil.get("telefono"));
+        }
+
+        usuarioService.guardarUsuario(usuario);
+
+        Map<String, Object> perfilActualizado = new HashMap<>();
+        perfilActualizado.put("idUsuario", usuario.getIdUsuario());
+        perfilActualizado.put("nombre", usuario.getNombre() != null ? usuario.getNombre() : "");
+        perfilActualizado.put("apellido", usuario.getApellido() != null ? usuario.getApellido() : "");
+        perfilActualizado.put("email", usuario.getEmail());
+        perfilActualizado.put("telefono", usuario.getTelefono() != null ? usuario.getTelefono() : "");
+        perfilActualizado.put("rol", usuario.getRol() != null ? usuario.getRol() : "");
+        perfilActualizado.put("estado", usuario.isEstado());
+        perfilActualizado.put("mensaje", "Perfil actualizado exitosamente");
+
+        return ResponseEntity.ok(perfilActualizado);
     }
 
 }
